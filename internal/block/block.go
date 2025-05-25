@@ -1,22 +1,24 @@
 package block
 
 import (
+	"blockchain/internal/algorythms"
 	"bytes"
-	"crypto/sha256"
-	"strconv"
 	"time"
 )
 
 type BlockHeader struct {
 	Timestamp     int64
+	Nonce         int64
+	TargetBits    uint64 /*todo: Присваивать после Proof-of-Work*/
 	PrevBlockHash []byte
 	Hash          []byte
 }
 
 func (h *BlockHeader) toByteArr() []byte {
-	t := []byte(strconv.FormatInt(h.Timestamp, 10))
+	timestamp := algorythms.Int64ToByteArr(h.Timestamp)
+	targetBits := algorythms.UInt64ToByteArr(h.TargetBits)
 
-	return bytes.Join([][]byte{t, h.PrevBlockHash}, []byte{})
+	return bytes.Join([][]byte{timestamp, targetBits, h.PrevBlockHash}, []byte{})
 }
 
 type BlockData struct {
@@ -32,19 +34,21 @@ type Block struct {
 	Data   BlockData
 }
 
-func (b *Block) setHash() {
-	byteBlock := append(b.Header.toByteArr(), b.Data.toByteArr()...)
-
-	shaHash := sha256.Sum256(byteBlock)
-
-	b.Header.Hash = shaHash[:]
+func (b *Block) ToByteArr() []byte {
+	return bytes.Join([][]byte{b.Header.toByteArr(), b.Data.toByteArr()}, []byte{})
 }
 
 func NewBlock(data BlockData, prevBlockHash []byte) *Block {
-	header := BlockHeader{time.Now().Unix(), prevBlockHash, []byte{}}
+	header := BlockHeader{
+		time.Now().Unix(),
+		0,
+		0,
+		prevBlockHash,
+		[]byte{}}
 
 	block := &Block{header, data}
-	block.setHash()
+
+	block.Header.Hash, block.Header.Nonce, block.Header.TargetBits = algorythms.ProofOfWork(block.ToByteArr())
 
 	return block
 }
