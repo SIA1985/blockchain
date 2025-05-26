@@ -16,7 +16,7 @@ type BlockHeader struct {
 	TargetBits uint64 /*todo: Присваивать после Proof-of-Work*/
 }
 
-func (h *BlockHeader) toByteArr() []byte {
+func (h *BlockHeader) prepareForPOW() []byte {
 	timestamp := algorythms.Int64ToByteArr(h.Timestamp)
 
 	return bytes.Join([][]byte{timestamp, h.PrevBlockHash}, []byte{})
@@ -26,7 +26,7 @@ type BlockData struct {
 	Name string
 }
 
-func (d *BlockData) toByteArr() []byte {
+func (d *BlockData) prepareForPOW() []byte {
 	return []byte(d.Name)
 }
 
@@ -35,12 +35,12 @@ type Block struct {
 	Data   BlockData
 }
 
-func (b *Block) ToByteArr() []byte {
-	return bytes.Join([][]byte{b.Header.toByteArr(), b.Data.toByteArr()}, []byte{})
+func (b *Block) PrepareForPOW() []byte {
+	return bytes.Join([][]byte{b.Header.prepareForPOW(), b.Data.prepareForPOW()}, []byte{})
 }
 
-func (b *Block) ToByteArrWithNonce() []byte {
-	return bytes.Join([][]byte{b.ToByteArr(), algorythms.Int64ToByteArr(b.Header.Nonce)}, []byte{})
+func (b *Block) PrepareForValidate() []byte {
+	return bytes.Join([][]byte{b.PrepareForPOW(), algorythms.Int64ToByteArr(b.Header.Nonce)}, []byte{})
 }
 
 func NewBlock(data BlockData, prevBlockHash []byte) *Block {
@@ -53,7 +53,7 @@ func NewBlock(data BlockData, prevBlockHash []byte) *Block {
 
 	block := &Block{header, data}
 
-	block.Header.Hash, block.Header.Nonce, block.Header.TargetBits = algorythms.ProofOfWork(block.ToByteArr())
+	block.Header.Hash, block.Header.Nonce, block.Header.TargetBits = algorythms.ProofOfWork(block.PrepareForPOW())
 
 	return block
 }

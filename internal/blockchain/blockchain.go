@@ -25,7 +25,7 @@ func (bc *Blockchain) ValidateBlocks() (result bool) {
 	result = true
 
 	for _, b := range bc.blocks {
-		valid := algorythms.Validate(b.ToByteArrWithNonce(), b.Header.TargetBits)
+		valid := algorythms.Validate(b.PrepareForValidate(), b.Header.TargetBits)
 		if valid {
 			fmt.Printf("Block '%s' is valid\n", b.Data.Name)
 		} else {
