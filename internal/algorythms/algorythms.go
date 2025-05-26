@@ -42,6 +42,7 @@ func ProofOfWork(blockByteArr []byte) (blockHash []byte, nonce int64, targetBits
 	var toCompare *big.Int = big.NewInt(1) /*todo*/
 	toCompare.Lsh(toCompare, uint(256-targetBits))
 
+	/*todo: распараллелить*/
 	fmt.Println("Майнинг блока...")
 	for nonce < math.MaxInt64 {
 		data := append(blockByteArr, Int64ToByteArr(nonce)...)
@@ -62,4 +63,17 @@ func ProofOfWork(blockByteArr []byte) (blockHash []byte, nonce int64, targetBits
 	fmt.Println()
 
 	return
+}
+
+/*todo: hashInt.Cmp(toCompare) == -1 - вынести в функцию*/
+
+func Validate(blockByteArrWithNonce []byte, targetBits uint64) bool {
+	var hashInt big.Int
+	var toCompare *big.Int = big.NewInt(1)
+	toCompare.Lsh(toCompare, uint(256-targetBits))
+
+	hash := sha256.Sum256(blockByteArrWithNonce)
+	hashInt.SetBytes(hash[:])
+
+	return (hashInt.Cmp(toCompare) == -1)
 }

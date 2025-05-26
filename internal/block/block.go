@@ -8,17 +8,18 @@ import (
 
 type BlockHeader struct {
 	Timestamp     int64
-	Nonce         int64
-	TargetBits    uint64 /*todo: Присваивать после Proof-of-Work*/
 	PrevBlockHash []byte
 	Hash          []byte
+
+	/*nohasable*/
+	Nonce      int64
+	TargetBits uint64 /*todo: Присваивать после Proof-of-Work*/
 }
 
 func (h *BlockHeader) toByteArr() []byte {
 	timestamp := algorythms.Int64ToByteArr(h.Timestamp)
-	targetBits := algorythms.UInt64ToByteArr(h.TargetBits)
 
-	return bytes.Join([][]byte{timestamp, targetBits, h.PrevBlockHash}, []byte{})
+	return bytes.Join([][]byte{timestamp, h.PrevBlockHash}, []byte{})
 }
 
 type BlockData struct {
@@ -38,13 +39,17 @@ func (b *Block) ToByteArr() []byte {
 	return bytes.Join([][]byte{b.Header.toByteArr(), b.Data.toByteArr()}, []byte{})
 }
 
+func (b *Block) ToByteArrWithNonce() []byte {
+	return bytes.Join([][]byte{b.ToByteArr(), algorythms.Int64ToByteArr(b.Header.Nonce)}, []byte{})
+}
+
 func NewBlock(data BlockData, prevBlockHash []byte) *Block {
 	header := BlockHeader{
 		time.Now().Unix(),
-		0,
-		0,
 		prevBlockHash,
-		[]byte{}}
+		[]byte{},
+		0,
+		0}
 
 	block := &Block{header, data}
 

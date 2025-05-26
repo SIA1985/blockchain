@@ -10,4 +10,6 @@ func main() {
 
 	bc.AddBlock(block.BlockData{Name: "Block 1"})
 	bc.AddBlock(block.BlockData{Name: "Block 2"})
+
+	bc.ValidateBlocks()
 }

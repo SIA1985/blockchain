@@ -1,6 +1,10 @@
 package blockchain
 
-import "blockchain/internal/block"
+import (
+	"blockchain/internal/algorythms"
+	"blockchain/internal/block"
+	"fmt"
+)
 
 type Blockchain struct {
 	blocks []*block.Block
@@ -15,4 +19,20 @@ func (bc *Blockchain) AddBlock(data block.BlockData) {
 	newBlock := block.NewBlock(data, prevBlock.Header.Hash)
 
 	bc.blocks = append(bc.blocks, newBlock)
+}
+
+func (bc *Blockchain) ValidateBlocks() (result bool) {
+	result = true
+
+	for _, b := range bc.blocks {
+		valid := algorythms.Validate(b.ToByteArrWithNonce(), b.Header.TargetBits)
+		if valid {
+			fmt.Printf("Block '%s' is valid\n", b.Data.Name)
+		} else {
+			fmt.Printf("Block '%s' is invalid\n", b.Data.Name)
+		}
+		result = result && valid
+	}
+
+	return
 }
