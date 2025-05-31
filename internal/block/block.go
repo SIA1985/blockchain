@@ -3,6 +3,7 @@ package block
 import (
 	"blockchain/internal/algorythms"
 	"bytes"
+	"encoding/gob"
 	"time"
 )
 
@@ -41,6 +42,24 @@ func (b *Block) PrepareForPOW() []byte {
 
 func (b *Block) PrepareForValidate() []byte {
 	return bytes.Join([][]byte{b.PrepareForPOW(), algorythms.Int64ToByteArr(b.Header.Nonce)}, []byte{})
+}
+
+func (b *Block) Serialize() ([]byte, error) {
+	var result bytes.Buffer
+
+	encoder := gob.NewEncoder(&result)
+	err := encoder.Encode(b)
+
+	return result.Bytes(), err
+}
+
+func DeserializeBlock(data []byte) (*Block, error) {
+	var block Block
+
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+	err := decoder.Decode(&block)
+
+	return &block, err
 }
 
 func NewBlock(data BlockData, prevBlockHash []byte) *Block {
