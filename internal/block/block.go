@@ -4,6 +4,7 @@ import (
 	"blockchain/internal/algorythms"
 	"bytes"
 	"encoding/gob"
+	"encoding/hex"
 	"time"
 )
 
@@ -53,6 +54,16 @@ func (b *Block) Serialize() ([]byte, error) {
 	return result.Bytes(), err
 }
 
+func (b *Block) StringSerialize() (value string, err error) {
+	data, err := b.Serialize()
+	if err != nil {
+		return
+	}
+
+	value = hex.EncodeToString(data)
+	return
+}
+
 func DeserializeBlock(data []byte) (*Block, error) {
 	var block Block
 
@@ -60,6 +71,19 @@ func DeserializeBlock(data []byte) (*Block, error) {
 	err := decoder.Decode(&block)
 
 	return &block, err
+}
+
+func StringDeserializeBlock(value string) (*Block, error) {
+	data, err := hex.DecodeString(value)
+	if err != nil {
+		return nil, err
+	}
+
+	return DeserializeBlock(data)
+}
+
+func (b *Block) StringHash() string {
+	return hex.EncodeToString(b.Header.Hash)
 }
 
 func NewBlock(data BlockData, prevBlockHash []byte) *Block {

@@ -42,7 +42,7 @@ func ProofOfWork(blockByteArr []byte) (blockHash []byte, nonce int64, targetBits
 	var toCompare *big.Int = big.NewInt(1) /*todo*/
 	toCompare.Lsh(toCompare, uint(256-targetBits))
 
-	/*todo: распараллелить*/
+	/*todo: распараллелить с каналом или вэйтгруппой*/
 	fmt.Println("Майнинг блока...")
 	for nonce < math.MaxInt64 {
 		data := append(blockByteArr, Int64ToByteArr(nonce)...)
