@@ -86,6 +86,10 @@ func (b *Block) StringHash() string {
 	return hex.EncodeToString(b.Header.Hash)
 }
 
+func (b *Block) StringPrevBlockHash() string {
+	return hex.EncodeToString(b.Header.PrevBlockHash)
+}
+
 func NewBlock(data BlockData, prevBlockHash []byte) *Block {
 	header := BlockHeader{
 		time.Now().Unix(),

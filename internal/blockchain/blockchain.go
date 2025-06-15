@@ -99,27 +99,8 @@ func (bc *Blockchain) AddBlock(data block.BlockData) (err error) {
 func (bc *Blockchain) ValidateBlocks() (result bool) {
 	result = true
 
-	keys, err := httpmap.Keys(BlocksFile)
-	if err != nil {
-		result = false
-		return
-	}
-
 	var blocks []*block.Block
-	/*! Тут собираем блоки в произвольном порядке !*/
-	for _, key := range keys {
-		value, err := httpmap.Load(BlocksFile, key)
-		if err != nil {
-			result = false
-			return
-		}
-
-		b, err := block.StringDeserializeBlock(value)
-		if err != nil {
-			result = false
-			return
-		}
-
+	for b := range ForEach(bc) {
 		blocks = append(blocks, b)
 	}
 
@@ -134,4 +115,8 @@ func (bc *Blockchain) ValidateBlocks() (result bool) {
 	}
 
 	return
+}
+
+func (bc *Blockchain) Iterator() BlockchainIterator {
+	return BlockchainIterator{bc.tip.StringHash()}
 }
