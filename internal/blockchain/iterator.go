@@ -3,6 +3,7 @@ package blockchain
 import (
 	"blockchain/internal/block"
 	httpmap "blockchain/internal/httpMap"
+	"fmt"
 )
 
 /*block 2 -> block 1 -> genesis*/
@@ -33,8 +34,11 @@ func ForEach(bc *Blockchain) <-chan *block.Block {
 		it := bc.Iterator()
 
 		for {
-			b, _ := it.Next()
+			b, err := it.Next()
 			if b == nil {
+				if err != nil {
+					fmt.Println(err)
+				}
 				break
 			}
 			c <- b
