@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+const (
+	Genesis = "Genesis"
+)
+
 type BlockHeader struct {
 	Timestamp     int64
 	PrevBlockHash []byte
@@ -90,9 +94,13 @@ func (b *Block) StringPrevBlockHash() string {
 	return hex.EncodeToString(b.Header.PrevBlockHash)
 }
 
+func (b *Block) IsGenesis() bool {
+	return (b.Data.Name == Genesis)
+}
+
 func NewBlock(data BlockData, prevBlockHash []byte) *Block {
 	header := BlockHeader{
-		time.Now().Unix(),
+		time.Now().UnixMilli(),
 		prevBlockHash,
 		[]byte{},
 		0,
@@ -106,5 +114,5 @@ func NewBlock(data BlockData, prevBlockHash []byte) *Block {
 }
 
 func NewGenesisBlock() *Block {
-	return NewBlock(BlockData{"Genesis"}, []byte{})
+	return NewBlock(BlockData{Genesis}, []byte{})
 }

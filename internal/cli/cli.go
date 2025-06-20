@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 )
 
 type CLI struct {
@@ -37,7 +38,7 @@ func (c *CLI) Run() {
 func (c *CLI) PrintBlockchain() {
 	for b := range blockchain.ForEach(c.Bc) {
 		fmt.Println(b.StringHash())
-		fmt.Println(b.Header.Timestamp)
+		fmt.Println(time.UnixMilli(b.Header.Timestamp).String())
 		fmt.Println(b.Data.Name)
 		fmt.Println()
 	}

@@ -12,6 +12,10 @@ type BlockchainIterator struct {
 }
 
 func (bi *BlockchainIterator) Next() (b *block.Block, err error) {
+	if len(bi.currentBlockHash) == 0 {
+		return
+	}
+
 	data, err := httpmap.Load(BlocksFile, bi.currentBlockHash)
 	if err != nil {
 		return
