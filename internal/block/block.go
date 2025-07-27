@@ -2,14 +2,12 @@ package block
 
 import (
 	"blockchain/internal/algorythms"
+	"blockchain/internal/transaction"
 	"bytes"
+	"crypto/sha256"
 	"encoding/gob"
 	"encoding/hex"
 	"time"
-)
-
-const (
-	Genesis = "Genesis"
 )
 
 type BlockHeader struct {
@@ -29,11 +27,18 @@ func (h *BlockHeader) prepareForPOW() []byte {
 }
 
 type BlockData struct {
-	Name string
+	Transactions []*transaction.Transaction
 }
 
 func (d *BlockData) prepareForPOW() []byte {
-	return []byte(d.Name)
+	var txHashes [][]byte
+
+	for _, tx := range d.Transactions {
+		txHashes = append(txHashes, tx.Hash)
+	}
+
+	txHash := sha256.Sum256(bytes.Join(txHashes, []byte{}))
+	return txHash[:]
 }
 
 type Block struct {
@@ -94,10 +99,6 @@ func (b *Block) StringPrevBlockHash() string {
 	return hex.EncodeToString(b.Header.PrevBlockHash)
 }
 
-func (b *Block) IsGenesis() bool {
-	return (b.Data.Name == Genesis)
-}
-
 func NewBlock(data BlockData, prevBlockHash []byte) *Block {
 	header := BlockHeader{
 		time.Now().UnixMilli(),
@@ -113,6 +114,6 @@ func NewBlock(data BlockData, prevBlockHash []byte) *Block {
 	return block
 }
 
-func NewGenesisBlock() *Block {
-	return NewBlock(BlockData{Genesis}, []byte{})
+func NewGenesisBlock(coinbase *transaction.Transaction) *Block {
+	return NewBlock(BlockData{[]*transaction.Transaction{coinbase}}, []byte{})
 }

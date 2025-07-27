@@ -2,7 +2,6 @@ package cli
 
 import (
 	"blockchain/internal/algorythms"
-	"blockchain/internal/block"
 	"blockchain/internal/blockchain"
 	"flag"
 	"fmt"
@@ -30,6 +29,11 @@ func (c *CLI) Run() {
 		hash := cmd.String("hash", "", "hash of block")
 		cmd.Parse(os.Args[2:])
 		c.ValidateBlock(*hash)
+	case "balance":
+		cmd := flag.NewFlagSet("balance", flag.ExitOnError)
+		address := cmd.String("address", "me", "get balance for this address")
+		cmd.Parse(os.Args[2:])
+		c.GetBalance(*address)
 	default:
 		c.PrintHelp()
 	}
@@ -39,16 +43,17 @@ func (c *CLI) PrintBlockchain() {
 	for b := range blockchain.ForEach(c.Bc) {
 		fmt.Println(b.StringHash())
 		fmt.Println(time.UnixMilli(b.Header.Timestamp).String())
-		fmt.Println(b.Data.Name)
+		/*todo:*/
+		// fmt.Println(b.Data.Name)
 		fmt.Println()
 	}
 }
 
 func (c *CLI) AddBlock(name string) {
-	err := c.Bc.AddBlock(block.BlockData{Name: name})
-	if err != nil {
-		fmt.Println(err)
-	}
+	// err := c.Bc.AddBlock(block.BlockData{Name: name})
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
 }
 
 func (c *CLI) ValidateBlock(hash string) {
@@ -74,6 +79,15 @@ func (c *CLI) ValidateBlockchain() {
 	} else {
 		fmt.Println("Blockchain is invalid!")
 	}
+}
+
+func (c *CLI) GetBalance(address string) {
+	var balance int64 = 0
+	for _, out := range c.Bc.FindUTXO(address) {
+		balance += out.Value
+	}
+
+	fmt.Printf("Balance of %s: %d\n", address, balance)
 }
 
 func (c *CLI) PrintHelp() {

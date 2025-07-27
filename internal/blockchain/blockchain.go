@@ -4,6 +4,8 @@ import (
 	"blockchain/internal/algorythms"
 	"blockchain/internal/block"
 	httpmap "blockchain/internal/httpMap"
+	"blockchain/internal/transaction"
+	"encoding/hex"
 	"fmt"
 )
 
@@ -18,8 +20,8 @@ type Blockchain struct {
 	tip *block.Block
 }
 
-func initStorage() (err error) {
-	genesis := block.NewGenesisBlock()
+func initStorage(address string) (err error) {
+	genesis := block.NewGenesisBlock(transaction.NewCoinbaseTX(address, transaction.GenesisCoinbaseData))
 
 	value, err := genesis.StringSerialize()
 	if err != nil {
@@ -39,7 +41,7 @@ func initStorage() (err error) {
 	return
 }
 
-func NewBlockchain() (b *Blockchain, err error) {
+func NewBlockchain(address string) (b *Blockchain, err error) {
 	var ok bool
 
 	ok, err = httpmap.CheckFiles([]string{BlocksFile, TipFile})
@@ -53,7 +55,7 @@ func NewBlockchain() (b *Blockchain, err error) {
 	}
 
 	if !ok {
-		err = initStorage()
+		err = initStorage(address)
 		if err != nil {
 			return
 		}
@@ -107,9 +109,9 @@ func (bc *Blockchain) ValidateBlocks() (result bool) {
 	for _, b := range blocks {
 		valid := algorythms.Validate(b.PrepareForValidate(), b.Header.TargetBits)
 		if valid {
-			fmt.Printf("Block '%s' is valid\n", b.Data.Name)
+			fmt.Printf("%s - valid\n", b.StringHash())
 		} else {
-			fmt.Printf("Block '%s' is invalid\n", b.Data.Name)
+			fmt.Printf("%s - invalid\n", b.StringHash())
 		}
 		result = result && valid
 	}
@@ -119,4 +121,58 @@ func (bc *Blockchain) ValidateBlocks() (result bool) {
 
 func (bc *Blockchain) Iterator() BlockchainIterator {
 	return BlockchainIterator{bc.tip.StringHash()}
+}
+
+func (bc *Blockchain) FindUnspentTx(address string) (unspent []transaction.Transaction) {
+	spentTx := make(map[string][]int)
+
+	for b := range ForEach(bc) {
+		for _, tx := range b.Data.Transactions {
+			txId := hex.EncodeToString(tx.Hash)
+
+		outputs:
+			for outIdx, out := range tx.VOut {
+				if _, ok := spentTx[txId]; ok {
+					for spentOut := range spentTx[txId] {
+						if spentOut == outIdx {
+							continue outputs
+						}
+					}
+				}
+
+				if out.CanBeUnlockedWith(address) {
+					unspent = append(unspent, *tx)
+				}
+			}
+
+			if tx.IsCoinbase() {
+				continue
+			}
+
+			for _, in := range tx.VIn {
+				if in.CanUnlockOutputWith(address) {
+					inTxId := hex.EncodeToString(in.TxId)
+					spentTx[inTxId] = append(spentTx[inTxId], int(in.VOut))
+				}
+			}
+		}
+
+		if len(b.Header.PrevBlockHash) == 0 {
+			break
+		}
+	}
+
+	return
+}
+
+func (bc *Blockchain) FindUTXO(address string) (UTXO []transaction.TXOutput) {
+	for _, tx := range bc.FindUnspentTx(address) {
+		for _, out := range tx.VOut {
+			if out.CanBeUnlockedWith(address) {
+				UTXO = append(UTXO, out)
+			}
+		}
+	}
+
+	return
 }
