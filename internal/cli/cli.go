@@ -2,7 +2,9 @@ package cli
 
 import (
 	"blockchain/internal/algorythms"
+	"blockchain/internal/block"
 	"blockchain/internal/blockchain"
+	"blockchain/internal/transaction"
 	"flag"
 	"fmt"
 	"os"
@@ -15,11 +17,13 @@ type CLI struct {
 
 func (c *CLI) Run() {
 	switch os.Args[1] {
-	case "addblock":
-		cmd := flag.NewFlagSet("addblock", flag.ExitOnError)
-		data := cmd.String("data", "", "data of block")
+	case "send":
+		cmd := flag.NewFlagSet("send", flag.ExitOnError)
+		from := cmd.String("from", "me", "address from")
+		to := cmd.String("to", "me", "address to")
+		amount := cmd.Int64("amount", 0, "amount to send")
 		cmd.Parse(os.Args[2:])
-		c.AddBlock(*data)
+		c.AddBlock(*from, *to, *amount)
 	case "print":
 		c.PrintBlockchain()
 	case "validateAll":
@@ -49,11 +53,18 @@ func (c *CLI) PrintBlockchain() {
 	}
 }
 
-func (c *CLI) AddBlock(name string) {
-	// err := c.Bc.AddBlock(block.BlockData{Name: name})
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
+func (c *CLI) AddBlock(from, to string, amount int64) {
+	unspentOuts, accumulated := c.Bc.FindOutputsToSpend(from, amount)
+
+	tx := transaction.NewUTXOTransaction(from, to, amount, unspentOuts, accumulated)
+	err := c.Bc.AddBlock(block.BlockData{[]*transaction.Transaction{tx}})
+
+	if err != nil {
+		fmt.Println("Can't send!")
+		return
+	}
+
+	fmt.Printf("%s -> %s sended: %d\n", from, to, amount)
 }
 
 func (c *CLI) ValidateBlock(hash string) {

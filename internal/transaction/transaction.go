@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/gob"
+	"encoding/hex"
 )
 
 const (
@@ -66,4 +67,33 @@ func NewCoinbaseTX(to, data string) *Transaction {
 	tx.SetHash()
 
 	return &tx
+}
+
+func NewUTXOTransaction(from, to string, amount int64, unspentOutputs map[string][]int64, accumulated int64) (tx *Transaction) {
+	var TXin []TXInput
+	var TXout []TXOutput
+
+	if accumulated < amount {
+		panic("Not enough money!")
+	}
+
+	/*inputs*/
+	for txId, outs := range unspentOutputs {
+		txId, _ := hex.DecodeString(txId)
+
+		for _, out := range outs {
+			TXin = append(TXin, TXInput{txId, out, from})
+		}
+	}
+
+	/*outputs*/
+	TXout = append(TXout, TXOutput{amount, to})
+	if accumulated > amount {
+		TXout = append(TXout, TXOutput{accumulated - amount, from})
+	}
+
+	tx = &Transaction{nil, TXout, TXin}
+	tx.SetHash()
+
+	return
 }

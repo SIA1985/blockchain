@@ -176,3 +176,26 @@ func (bc *Blockchain) FindUTXO(address string) (UTXO []transaction.TXOutput) {
 
 	return
 }
+
+func (bc *Blockchain) FindOutputsToSpend(address string, amount int64) (unspentOutputs map[string][]int64, accumulated int64) {
+	unspentOutputs = make(map[string][]int64)
+	accumulated = 0
+
+Work:
+	for _, tx := range bc.FindUnspentTx(address) {
+		txId := hex.EncodeToString(tx.Hash)
+
+		for outId, out := range tx.VOut {
+			if out.CanBeUnlockedWith(address) && accumulated < amount {
+				accumulated += out.Value
+				unspentOutputs[txId] = append(unspentOutputs[txId], int64(outId))
+
+				if accumulated >= amount {
+					break Work
+				}
+			}
+		}
+	}
+
+	return
+}
