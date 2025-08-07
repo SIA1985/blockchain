@@ -5,6 +5,12 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+
+	"golang.org/x/crypto/ripemd160"
+)
+
+const (
+	AddressChecksumLen = 4
 )
 
 func Int64ToByteArr(v int64) []byte {
@@ -76,4 +82,27 @@ func Validate(blockByteArrWithNonce []byte, targetBits uint64) bool {
 	hashInt.SetBytes(hash[:])
 
 	return (hashInt.Cmp(toCompare) == -1)
+}
+
+func HashPublicKey(public []byte) []byte {
+	publicSHA256 := sha256.Sum256(public)
+
+	RIPEMD160Hasher := ripemd160.New()
+	_, err := RIPEMD160Hasher.Write(publicSHA256[:])
+	if err != nil {
+		panic(err)
+	}
+
+	return RIPEMD160Hasher.Sum(nil)
+}
+
+func Checksum(payload []byte) []byte {
+	firstSHA := sha256.Sum256(payload)
+	secondSHA := sha256.Sum256(firstSHA[:])
+
+	return secondSHA[:AddressChecksumLen]
+}
+
+func PublicKeyHash(address []byte) []byte {
+	return address[1 : len(address)-AddressChecksumLen]
 }

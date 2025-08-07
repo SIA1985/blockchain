@@ -5,6 +5,7 @@ import (
 	"blockchain/internal/block"
 	"blockchain/internal/blockchain"
 	"blockchain/internal/transaction"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"os"
@@ -54,10 +55,23 @@ func (c *CLI) PrintBlockchain() {
 }
 
 func (c *CLI) AddBlock(from, to string, amount int64) {
-	unspentOuts, accumulated := c.Bc.FindOutputsToSpend(from, amount)
+	var err error
 
-	tx := transaction.NewUTXOTransaction(from, to, amount, unspentOuts, accumulated)
-	err := c.Bc.AddBlock(block.BlockData{[]*transaction.Transaction{tx}})
+	srcAddress, err := hex.DecodeString(from)
+	if err != nil {
+		fmt.Printf("Can't decode address: %w\n", err)
+		return
+	}
+	destAddress, err := hex.DecodeString(to)
+	if err != nil {
+		fmt.Printf("Can't decode address: %w\n", err)
+		return
+	}
+
+	unspentOuts, accumulated := c.Bc.FindOutputsToSpend(srcAddress, amount)
+
+	tx := transaction.NewUTXOTransaction(srcAddress, destAddress, amount, unspentOuts, accumulated)
+	err = c.Bc.AddBlock(block.BlockData{Transactions: []*transaction.Transaction{tx}})
 
 	if err != nil {
 		fmt.Println("Can't send!")
@@ -93,8 +107,14 @@ func (c *CLI) ValidateBlockchain() {
 }
 
 func (c *CLI) GetBalance(address string) {
+	srcAddress, err := hex.DecodeString(address)
+	if err != nil {
+		fmt.Printf("Can't decode address: %w\n", err)
+		return
+	}
+
 	var balance int64 = 0
-	for _, out := range c.Bc.FindUTXO(address) {
+	for _, out := range c.Bc.FindUTXO(srcAddress) {
 		balance += out.Value
 	}
 

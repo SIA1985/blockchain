@@ -20,8 +20,8 @@ type Blockchain struct {
 	tip *block.Block
 }
 
-func initStorage(address string) (err error) {
-	genesis := block.NewGenesisBlock(transaction.NewCoinbaseTX(address, transaction.GenesisCoinbaseData))
+func initStorage(address []byte) (err error) {
+	genesis := block.NewGenesisBlock(transaction.NewCoinbaseTX(address))
 
 	value, err := genesis.StringSerialize()
 	if err != nil {
@@ -41,7 +41,7 @@ func initStorage(address string) (err error) {
 	return
 }
 
-func NewBlockchain(address string) (b *Blockchain, err error) {
+func NewBlockchain(address []byte) (b *Blockchain, err error) {
 	var ok bool
 
 	ok, err = httpmap.CheckFiles([]string{BlocksFile, TipFile})
@@ -123,7 +123,8 @@ func (bc *Blockchain) Iterator() BlockchainIterator {
 	return BlockchainIterator{bc.tip.StringHash()}
 }
 
-func (bc *Blockchain) FindUnspentTx(address string) (unspent []transaction.Transaction) {
+func (bc *Blockchain) FindUnspentTx(address []byte) (unspent []transaction.Transaction) {
+	publicKeyHash := algorythms.PublicKeyHash(address)
 	spentTx := make(map[string][]int)
 
 	for b := range ForEach(bc) {
@@ -140,7 +141,7 @@ func (bc *Blockchain) FindUnspentTx(address string) (unspent []transaction.Trans
 					}
 				}
 
-				if out.CanBeUnlockedWith(address) {
+				if out.IsLockedWithKey(publicKeyHash) {
 					unspent = append(unspent, *tx)
 				}
 			}
@@ -150,7 +151,7 @@ func (bc *Blockchain) FindUnspentTx(address string) (unspent []transaction.Trans
 			}
 
 			for _, in := range tx.VIn {
-				if in.CanUnlockOutputWith(address) {
+				if in.UsesKey(publicKeyHash) {
 					inTxId := hex.EncodeToString(in.TxId)
 					spentTx[inTxId] = append(spentTx[inTxId], int(in.VOut))
 				}
@@ -165,10 +166,12 @@ func (bc *Blockchain) FindUnspentTx(address string) (unspent []transaction.Trans
 	return
 }
 
-func (bc *Blockchain) FindUTXO(address string) (UTXO []transaction.TXOutput) {
+func (bc *Blockchain) FindUTXO(address []byte) (UTXO []transaction.TXOutput) {
+	publicKeyHash := algorythms.PublicKeyHash(address)
+
 	for _, tx := range bc.FindUnspentTx(address) {
 		for _, out := range tx.VOut {
-			if out.CanBeUnlockedWith(address) {
+			if out.IsLockedWithKey(publicKeyHash) {
 				UTXO = append(UTXO, out)
 			}
 		}
@@ -177,7 +180,9 @@ func (bc *Blockchain) FindUTXO(address string) (UTXO []transaction.TXOutput) {
 	return
 }
 
-func (bc *Blockchain) FindOutputsToSpend(address string, amount int64) (unspentOutputs map[string][]int64, accumulated int64) {
+func (bc *Blockchain) FindOutputsToSpend(address []byte, amount int64) (unspentOutputs map[string][]int64, accumulated int64) {
+	publicKeyHash := algorythms.PublicKeyHash(address)
+
 	unspentOutputs = make(map[string][]int64)
 	accumulated = 0
 
@@ -186,7 +191,7 @@ Work:
 		txId := hex.EncodeToString(tx.Hash)
 
 		for outId, out := range tx.VOut {
-			if out.CanBeUnlockedWith(address) && accumulated < amount {
+			if out.IsLockedWithKey(publicKeyHash) && accumulated < amount {
 				accumulated += out.Value
 				unspentOutputs[txId] = append(unspentOutputs[txId], int64(outId))
 

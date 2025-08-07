@@ -7,7 +7,7 @@ import (
 
 func main() {
 	/*todo: address*/
-	bc, err := blockchain.NewBlockchain("me")
+	bc, err := blockchain.NewBlockchain([]byte("meeeeeeeeeeeeeeeeeeeeee"))
 	if err != nil {
 		panic(err)
 	}
