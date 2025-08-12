@@ -3,11 +3,12 @@ package wallet
 import (
 	"blockchain/internal/algorythms"
 	httpmap "blockchain/internal/httpMap"
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"encoding/gob"
 	"encoding/hex"
-	"fmt"
 )
 
 const (
@@ -36,8 +37,14 @@ func (w Wallet) Save() error {
 		return err
 	}
 
-	//todo:
-	if err := httpmap.Store(walletFile, hex.EncodeToString(w.PublicKey), fmt.Sprintf("%x", w.PrivateKey)); err != nil {
+	var result bytes.Buffer
+
+	encoder := gob.NewEncoder(&result)
+	if err := encoder.Encode(w); err != nil {
+		return err
+	}
+
+	if err := httpmap.Store(walletFile, hex.EncodeToString(w.PublicKey), hex.EncodeToString(result.Bytes())); err != nil {
 		return err
 	}
 
@@ -49,14 +56,19 @@ func (w *Wallet) Load(address string) (err error) {
 		return err
 	}
 
-	//todo:
 	value, err := httpmap.Load(walletFile, address)
 	if err != nil {
 		return
 	}
 
-	w.PublicKey, err = hex.DecodeString(value)
+	var data []byte
+	data, err = hex.DecodeString(value)
 	if err != nil {
+		return
+	}
+
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+	if err = decoder.Decode(w); err != nil {
 		return
 	}
 
