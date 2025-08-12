@@ -5,6 +5,7 @@ import (
 	"blockchain/internal/block"
 	"blockchain/internal/blockchain"
 	"blockchain/internal/transaction"
+	"blockchain/internal/wallet"
 	"encoding/hex"
 	"flag"
 	"fmt"
@@ -12,8 +13,19 @@ import (
 	"time"
 )
 
+func getBlockchain() *blockchain.Blockchain {
+	/*todo: my address = 35fad8a91040ce20658c12e19b488c6e4d325edff153eadc4a8e79fab4bb403f7bf161f25a1f6382bb0f6dc58edfbf9e1d0389c7519a5c1c8da1becb00d71e00*/
+	address, _ := hex.DecodeString("35fad8a91040ce20658c12e19b488c6e4d325edff153eadc4a8e79fab4bb403f7bf161f25a1f6382bb0f6dc58edfbf9e1d0389c7519a5c1c8da1becb00d71e00")
+
+	bc, err := blockchain.NewBlockchain(address)
+	if err != nil {
+		panic(err)
+	}
+
+	return bc
+}
+
 type CLI struct {
-	Bc *blockchain.Blockchain
 }
 
 func (c *CLI) Run() {
@@ -39,13 +51,19 @@ func (c *CLI) Run() {
 		address := cmd.String("address", "me", "get balance for this address")
 		cmd.Parse(os.Args[2:])
 		c.GetBalance(*address)
+	case "createWallet":
+		c.CreateWallet()
+	case "addresses":
+		c.GetAddresses()
 	default:
 		c.PrintHelp()
 	}
 }
 
 func (c *CLI) PrintBlockchain() {
-	for b := range blockchain.ForEach(c.Bc) {
+	bc := getBlockchain()
+
+	for b := range blockchain.ForEach(bc) {
 		fmt.Println(b.StringHash())
 		fmt.Println(time.UnixMilli(b.Header.Timestamp).String())
 		/*todo:*/
@@ -55,23 +73,24 @@ func (c *CLI) PrintBlockchain() {
 }
 
 func (c *CLI) AddBlock(from, to string, amount int64) {
+	bc := getBlockchain()
 	var err error
 
 	srcAddress, err := hex.DecodeString(from)
 	if err != nil {
-		fmt.Printf("Can't decode address: %w\n", err)
+		fmt.Printf("Can't decode 'from' address: %x\n", err)
 		return
 	}
 	destAddress, err := hex.DecodeString(to)
 	if err != nil {
-		fmt.Printf("Can't decode address: %w\n", err)
+		fmt.Printf("Can't decode 'to' address: %x\n", err)
 		return
 	}
 
-	unspentOuts, accumulated := c.Bc.FindOutputsToSpend(srcAddress, amount)
+	unspentOuts, accumulated := bc.FindOutputsToSpend(srcAddress, amount)
 
 	tx := transaction.NewUTXOTransaction(srcAddress, destAddress, amount, unspentOuts, accumulated)
-	err = c.Bc.AddBlock(block.BlockData{Transactions: []*transaction.Transaction{tx}})
+	err = bc.AddBlock(block.BlockData{Transactions: []*transaction.Transaction{tx}})
 
 	if err != nil {
 		fmt.Println("Can't send!")
@@ -82,7 +101,9 @@ func (c *CLI) AddBlock(from, to string, amount int64) {
 }
 
 func (c *CLI) ValidateBlock(hash string) {
-	for b := range blockchain.ForEach(c.Bc) {
+	bc := getBlockchain()
+
+	for b := range blockchain.ForEach(bc) {
 		if b.StringHash() != hash {
 			continue
 		}
@@ -99,7 +120,9 @@ func (c *CLI) ValidateBlock(hash string) {
 }
 
 func (c *CLI) ValidateBlockchain() {
-	if c.Bc.ValidateBlocks() {
+	bc := getBlockchain()
+
+	if bc.ValidateBlocks() {
 		fmt.Println("Blockchain is valid!")
 	} else {
 		fmt.Println("Blockchain is invalid!")
@@ -107,6 +130,8 @@ func (c *CLI) ValidateBlockchain() {
 }
 
 func (c *CLI) GetBalance(address string) {
+	bc := getBlockchain()
+
 	srcAddress, err := hex.DecodeString(address)
 	if err != nil {
 		fmt.Printf("Can't decode address: %w\n", err)
@@ -114,11 +139,32 @@ func (c *CLI) GetBalance(address string) {
 	}
 
 	var balance int64 = 0
-	for _, out := range c.Bc.FindUTXO(srcAddress) {
+	for _, out := range bc.FindUTXO(srcAddress) {
 		balance += out.Value
 	}
 
 	fmt.Printf("Balance of %s: %d\n", address, balance)
+}
+
+func (c *CLI) CreateWallet() {
+	w := wallet.NewWallet()
+
+	if err := w.Save(); err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("address: %x\n", w.GetAddress())
+}
+
+func (c *CLI) GetAddresses() {
+	addresses, err := wallet.Addresses()
+	if err != nil {
+		panic(err)
+	}
+
+	for _, address := range addresses {
+		fmt.Println(address)
+	}
 }
 
 func (c *CLI) PrintHelp() {
@@ -127,4 +173,7 @@ func (c *CLI) PrintHelp() {
 	fmt.Println("print - print all blockchain")
 	fmt.Println("validateAll - validate all blocks in blockchain")
 	fmt.Println("validate --hash '...' - validate block by hash")
+	fmt.Println("balance --address '...' - get balance by address")
+	fmt.Println("createWallet - create new wallet")
+	fmt.Println("addresses - all saved addresses")
 }
