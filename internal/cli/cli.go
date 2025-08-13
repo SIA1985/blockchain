@@ -153,7 +153,7 @@ func (c *CLI) CreateWallet() {
 		panic(err)
 	}
 
-	fmt.Printf("address: %x\n", w.GetAddress())
+	fmt.Printf("address: %x\n", w.Address())
 }
 
 func (c *CLI) GetAddresses() {

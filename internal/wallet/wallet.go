@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"encoding/gob"
 	"encoding/hex"
+	"math/big"
 )
 
 const (
@@ -17,11 +18,14 @@ const (
 
 type Wallet struct {
 	PrivateKey ecdsa.PrivateKey
-	PublicKey  []byte
 }
 
-func (w Wallet) GetAddress() []byte {
-	publicKeyHash := algorythms.HashPublicKey(w.PublicKey)
+func (w Wallet) PublicKey() []byte {
+	return append(w.PrivateKey.PublicKey.X.Bytes(), w.PrivateKey.PublicKey.Y.Bytes()...)
+}
+
+func (w Wallet) Address() []byte {
+	publicKeyHash := algorythms.HashPublicKey(w.PublicKey())
 
 	versionedPayload := append([]byte("01"), publicKeyHash...)
 	checksum := algorythms.Checksum(versionedPayload)
@@ -32,19 +36,27 @@ func (w Wallet) GetAddress() []byte {
 	return address
 }
 
+type saveWallet struct {
+	X *big.Int
+	Y *big.Int
+	D *big.Int
+}
+
 func (w Wallet) Save() error {
 	if ok, err := httpmap.CheckFiles([]string{walletFile}); !ok && err != nil {
 		return err
 	}
 
+	sw := saveWallet{w.PrivateKey.X, w.PrivateKey.Y, w.PrivateKey.D}
+
 	var result bytes.Buffer
 
 	encoder := gob.NewEncoder(&result)
-	if err := encoder.Encode(w); err != nil {
+	if err := encoder.Encode(&sw); err != nil {
 		return err
 	}
 
-	if err := httpmap.Store(walletFile, hex.EncodeToString(w.PublicKey), hex.EncodeToString(result.Bytes())); err != nil {
+	if err := httpmap.Store(walletFile, hex.EncodeToString(w.Address()), hex.EncodeToString(result.Bytes())); err != nil {
 		return err
 	}
 
@@ -67,10 +79,17 @@ func (w *Wallet) Load(address string) (err error) {
 		return
 	}
 
+	sw := saveWallet{}
+
 	decoder := gob.NewDecoder(bytes.NewReader(data))
-	if err = decoder.Decode(w); err != nil {
+	if err = decoder.Decode(&sw); err != nil {
 		return
 	}
+
+	w.PrivateKey.D = sw.D
+	w.PrivateKey.X = sw.X
+	w.PrivateKey.Y = sw.Y
+	w.PrivateKey.Curve = elliptic.P256()
 
 	return nil
 }
@@ -78,12 +97,10 @@ func (w *Wallet) Load(address string) (err error) {
 type Wallets map[string]*Wallet
 
 func NewWallet() *Wallet {
-	private, public := newKeyPair()
-
-	return &Wallet{private, public}
+	return &Wallet{newKeyPair()}
 }
 
-func newKeyPair() (ecdsa.PrivateKey, []byte) {
+func newKeyPair() ecdsa.PrivateKey {
 	curve := elliptic.P256()
 
 	private, err := ecdsa.GenerateKey(curve, rand.Reader)
@@ -91,7 +108,7 @@ func newKeyPair() (ecdsa.PrivateKey, []byte) {
 		panic(err)
 	}
 
-	return *private, append(private.PublicKey.X.Bytes(), private.Y.Bytes()...)
+	return *private
 }
 
 func Addresses() (addresses []string, err error) {
