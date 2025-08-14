@@ -24,7 +24,7 @@ type Blockchain struct {
 }
 
 func initStorage(address []byte) (err error) {
-	genesis := block.NewGenesisBlock(transaction.NewCoinbaseTX(address, SubsidyBase))
+	genesis := block.NewGenesisBlock(transaction.NewCoinbaseTX(address, SubsidyBase, 0))
 
 	value, err := genesis.StringSerialize()
 	if err != nil {
@@ -83,10 +83,11 @@ func (bc Blockchain) getSubsidy() int64 {
 	return SubsidyBase >> (2 * int64((bc.tip.Header.Height / 3)))
 }
 
-func (bc *Blockchain) AddBlock(data block.BlockData) (err error) {
+func (bc *Blockchain) AddBlock(data block.BlockData, comission int64) (err error) {
 	prevBlock := bc.tip
 	newBlock := block.NewBlock(data, prevBlock.Header.Hash, prevBlock.Header.Height)
-	data.Transactions = append(data.Transactions, transaction.NewCoinbaseTX(bc.myAddress, bc.getSubsidy()))
+
+	data.Transactions = append(data.Transactions, transaction.NewCoinbaseTX(bc.myAddress, bc.getSubsidy(), comission))
 
 	value, err := newBlock.StringSerialize()
 	if err != nil {

@@ -90,7 +90,7 @@ func (c *CLI) AddBlock(from, to string, amount int64) {
 	unspentOuts, accumulated := bc.FindOutputsToSpend(srcAddress, amount)
 
 	tx := transaction.NewUTXOTransaction(srcAddress, destAddress, amount, unspentOuts, accumulated)
-	err = bc.AddBlock(block.BlockData{Transactions: []*transaction.Transaction{tx}})
+	err = bc.AddBlock(block.BlockData{Transactions: []*transaction.Transaction{tx}}, accumulated-amount)
 
 	if err != nil {
 		fmt.Println("Can't send!")
