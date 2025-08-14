@@ -14,14 +14,17 @@ const (
 
 	TipFile = "tip"
 	tip     = "tipKey"
+
+	SubsidyBase = 100
 )
 
 type Blockchain struct {
-	tip *block.Block
+	tip       *block.Block
+	myAddress []byte
 }
 
 func initStorage(address []byte) (err error) {
-	genesis := block.NewGenesisBlock(transaction.NewCoinbaseTX(address))
+	genesis := block.NewGenesisBlock(transaction.NewCoinbaseTX(address, SubsidyBase))
 
 	value, err := genesis.StringSerialize()
 	if err != nil {
@@ -71,13 +74,19 @@ func NewBlockchain(address []byte) (b *Blockchain, err error) {
 		return
 	}
 
-	b = &Blockchain{tipBlock}
+	b = &Blockchain{tipBlock, address}
 	return
+}
+
+func (bc Blockchain) getSubsidy() int64 {
+
+	return SubsidyBase >> (2 * int64((bc.tip.Header.Height / 3)))
 }
 
 func (bc *Blockchain) AddBlock(data block.BlockData) (err error) {
 	prevBlock := bc.tip
-	newBlock := block.NewBlock(data, prevBlock.Header.Hash)
+	newBlock := block.NewBlock(data, prevBlock.Header.Hash, prevBlock.Header.Height)
+	data.Transactions = append(data.Transactions, transaction.NewCoinbaseTX(bc.myAddress, bc.getSubsidy()))
 
 	value, err := newBlock.StringSerialize()
 	if err != nil {

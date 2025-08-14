@@ -14,6 +14,7 @@ type BlockHeader struct {
 	Timestamp     int64
 	PrevBlockHash []byte
 	Hash          []byte
+	Height        int32
 
 	/*nohasable*/
 	Nonce      int64
@@ -99,11 +100,12 @@ func (b *Block) StringPrevBlockHash() string {
 	return hex.EncodeToString(b.Header.PrevBlockHash)
 }
 
-func NewBlock(data BlockData, prevBlockHash []byte) *Block {
+func NewBlock(data BlockData, prevBlockHash []byte, prevBlockHeight int32) *Block {
 	header := BlockHeader{
 		time.Now().UnixMilli(),
 		prevBlockHash,
 		[]byte{},
+		prevBlockHeight + 1,
 		0,
 		0}
 
@@ -115,5 +117,5 @@ func NewBlock(data BlockData, prevBlockHash []byte) *Block {
 }
 
 func NewGenesisBlock(coinbase *transaction.Transaction) *Block {
-	return NewBlock(BlockData{[]*transaction.Transaction{coinbase}}, []byte{})
+	return NewBlock(BlockData{[]*transaction.Transaction{coinbase}}, []byte{}, -1)
 }

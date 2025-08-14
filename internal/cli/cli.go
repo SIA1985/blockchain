@@ -14,8 +14,8 @@ import (
 )
 
 func getBlockchain() *blockchain.Blockchain {
-	/*todo: my address = 35fad8a91040ce20658c12e19b488c6e4d325edff153eadc4a8e79fab4bb403f7bf161f25a1f6382bb0f6dc58edfbf9e1d0389c7519a5c1c8da1becb00d71e00*/
-	address, _ := hex.DecodeString("35fad8a91040ce20658c12e19b488c6e4d325edff153eadc4a8e79fab4bb403f7bf161f25a1f6382bb0f6dc58edfbf9e1d0389c7519a5c1c8da1becb00d71e00")
+	/*todo: my address = 3031a099fab71777d092760196c49d4a72fe69a922fd37e31a17*/
+	address, _ := hex.DecodeString("3031a099fab71777d092760196c49d4a72fe69a922fd37e31a17")
 
 	bc, err := blockchain.NewBlockchain(address)
 	if err != nil {
