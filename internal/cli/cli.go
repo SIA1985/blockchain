@@ -72,6 +72,7 @@ func (c *CLI) PrintBlockchain() {
 	}
 }
 
+/*todo: пул транзакций*/
 func (c *CLI) AddBlock(from, to string, amount int64) {
 	bc := getBlockchain()
 	var err error
@@ -87,13 +88,25 @@ func (c *CLI) AddBlock(from, to string, amount int64) {
 		return
 	}
 
-	unspentOuts, accumulated := bc.FindOutputsToSpend(srcAddress, amount)
-
-	tx := transaction.NewUTXOTransaction(srcAddress, destAddress, amount, unspentOuts, accumulated)
-	err = bc.AddBlock(block.BlockData{Transactions: []*transaction.Transaction{tx}}, accumulated-amount)
-
+	unspentOuts, accumulated, err := bc.FindOutputsToSpend(srcAddress, amount)
 	if err != nil {
-		fmt.Println("Can't send!")
+		fmt.Printf("Can't find utxo: %x\n", err)
+		return
+	}
+
+	var TXs []*transaction.Transaction
+	/*todo: взять самые выгодные транзакции из пула*/
+	TXs = append(TXs, transaction.NewUTXOTransaction(srcAddress, destAddress, amount, unspentOuts, accumulated))
+
+	err = bc.AddBlock(block.BlockData{Transactions: TXs}, accumulated-amount)
+	if err != nil {
+		fmt.Printf("Can't send: %x\n", err)
+		return
+	}
+
+	err = bc.UpdateUTXO(TXs)
+	if err != nil {
+		fmt.Printf("Can't update utxo: %x\n", err)
 		return
 	}
 
@@ -134,13 +147,20 @@ func (c *CLI) GetBalance(address string) {
 
 	srcAddress, err := hex.DecodeString(address)
 	if err != nil {
-		fmt.Printf("Can't decode address: %w\n", err)
+		fmt.Printf("Can't decode address: %x\n", err)
+		return
+	}
+
+	UTXO, err := bc.FindUTXO(srcAddress)
+	if err != nil {
 		return
 	}
 
 	var balance int64 = 0
-	for _, out := range bc.FindUTXO(srcAddress) {
-		balance += out.Value
+	for _, outs := range UTXO {
+		for _, out := range outs {
+			balance += out.Value
+		}
 	}
 
 	fmt.Printf("Balance of %s: %d\n", address, balance)

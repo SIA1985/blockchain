@@ -5,15 +5,19 @@ import (
 	"blockchain/internal/block"
 	httpmap "blockchain/internal/httpMap"
 	"blockchain/internal/transaction"
-	"encoding/hex"
 	"fmt"
 )
 
 const (
+	/*hash(block) -> block*/
 	BlocksFile = "blocks"
 
+	/*tipKey -> block*/
 	TipFile = "tip"
 	tip     = "tipKey"
+
+	/*txId -> array[TXOutput]*/
+	UTXOFile = "utxo"
 
 	SubsidyBase = 100
 )
@@ -47,7 +51,7 @@ func initStorage(address []byte) (err error) {
 func NewBlockchain(address []byte) (b *Blockchain, err error) {
 	var ok bool
 
-	ok, err = httpmap.CheckFiles([]string{BlocksFile, TipFile})
+	ok, err = httpmap.CheckFiles([]string{BlocksFile, TipFile, UTXOFile})
 	if err != nil && !ok {
 		return
 	}
@@ -111,12 +115,7 @@ func (bc *Blockchain) AddBlock(data block.BlockData, comission int64) (err error
 func (bc *Blockchain) ValidateBlocks() (result bool) {
 	result = true
 
-	var blocks []*block.Block
 	for b := range ForEach(bc) {
-		blocks = append(blocks, b)
-	}
-
-	for _, b := range blocks {
 		valid := algorythms.Validate(b.PrepareForValidate(), b.Header.TargetBits)
 		if valid {
 			fmt.Printf("%s - valid\n", b.StringHash())
@@ -133,74 +132,70 @@ func (bc *Blockchain) Iterator() BlockchainIterator {
 	return BlockchainIterator{bc.tip.StringHash()}
 }
 
-func (bc *Blockchain) FindUnspentTx(address []byte) (unspent []transaction.Transaction) {
+func (bc *Blockchain) FindUTXO(address []byte) (UTXO map[string][]transaction.TXOutput, err error) {
 	publicKeyHash := algorythms.PublicKeyHash(address)
-	spentTx := make(map[string][]int)
 
-	for b := range ForEach(bc) {
-		for _, tx := range b.Data.Transactions {
-			txId := hex.EncodeToString(tx.Hash)
-
-		outputs:
-			for outIdx, out := range tx.VOut {
-				if _, ok := spentTx[txId]; ok {
-					for spentOut := range spentTx[txId] {
-						if spentOut == outIdx {
-							continue outputs
-						}
-					}
-				}
-
-				if out.IsLockedWithKey(publicKeyHash) {
-					unspent = append(unspent, *tx)
-				}
-			}
-
-			if tx.IsCoinbase() {
-				continue
-			}
-
-			for _, in := range tx.VIn {
-				if in.UsesKey(publicKeyHash) {
-					inTxId := hex.EncodeToString(in.TxId)
-					spentTx[inTxId] = append(spentTx[inTxId], int(in.VOut))
-				}
-			}
-		}
-
-		if len(b.Header.PrevBlockHash) == 0 {
-			break
-		}
+	/*todo: оптимизировать запросом всего*/
+	txIds, err := httpmap.Keys(UTXOFile)
+	if err != nil {
+		return
 	}
 
-	return
-}
+	var outsDeserialized string
+	for _, txId := range txIds {
+		outsDeserialized, err = httpmap.Load(UTXOFile, txId)
+		if err != nil {
+			return
 
-func (bc *Blockchain) FindUTXO(address []byte) (UTXO []transaction.TXOutput) {
-	publicKeyHash := algorythms.PublicKeyHash(address)
+		}
 
-	for _, tx := range bc.FindUnspentTx(address) {
-		for _, out := range tx.VOut {
+		var outs []transaction.TXOutput
+		outs, err = transaction.TXOutArrayDesiralizeFromString(outsDeserialized)
+		if err != nil {
+			return
+		}
+
+		for _, out := range outs {
 			if out.IsLockedWithKey(publicKeyHash) {
-				UTXO = append(UTXO, out)
+				UTXO[txId] = append(UTXO[txId], out)
 			}
 		}
+
 	}
 
 	return
 }
 
-func (bc *Blockchain) FindOutputsToSpend(address []byte, amount int64) (unspentOutputs map[string][]int64, accumulated int64) {
+func (bc Blockchain) UpdateUTXO(txs []*transaction.Transaction) (err error) {
+	// for _, tx := range txs {
+	// 	/*outs*/
+	// 	for _, out := range tx.VOut {
+
+	// 	}
+
+	// 	/*ins*/
+	// 	for _, in := range tx.VIn {
+
+	// 	}
+	// }
+
+	return
+}
+
+func (bc *Blockchain) FindOutputsToSpend(address []byte, amount int64) (unspentOutputs map[string][]int64, accumulated int64, err error) {
 	publicKeyHash := algorythms.PublicKeyHash(address)
 
 	unspentOutputs = make(map[string][]int64)
 	accumulated = 0
 
-Work:
-	for _, tx := range bc.FindUnspentTx(address) {
-		txId := hex.EncodeToString(tx.Hash)
+	UTXO, err := bc.FindUTXO(address)
+	if err != nil {
+		return
+	}
 
-		for outId, out := range tx.VOut {
+Work:
+	for txId, outs := range UTXO {
+		for outId, out := range outs {
 			if out.IsLockedWithKey(publicKeyHash) && accumulated < amount {
 				accumulated += out.Value
 				unspentOutputs[txId] = append(unspentOutputs[txId], int64(outId))

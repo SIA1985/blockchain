@@ -16,15 +16,16 @@ type BlockHeader struct {
 	Hash          []byte
 	Height        int32
 
-	/*nohasable*/
+	/*nohasable before POW*/
 	Nonce      int64
 	TargetBits uint64 /*todo: Присваивать после Proof-of-Work*/
 }
 
 func (h *BlockHeader) prepareForPOW() []byte {
 	timestamp := algorythms.Int64ToByteArr(h.Timestamp)
+	height := algorythms.Int32ToByteArr(h.Height)
 
-	return bytes.Join([][]byte{timestamp, h.PrevBlockHash}, []byte{})
+	return bytes.Join([][]byte{timestamp, h.PrevBlockHash, height}, []byte{})
 }
 
 type BlockData struct {

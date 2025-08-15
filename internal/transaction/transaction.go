@@ -63,8 +63,8 @@ func (out TXOutput) IsLockedWithKey(publicKeyHash []byte) bool {
 }
 
 type TXInput struct {
-	TxId []byte
-	VOut int64
+	TxId []byte /*Id транзакции, на которую ссылаемся*/
+	VOut int64  /*Индекс выхода транзакции с Id=TxId*/
 
 	//todo: свой скриптовый язык
 	// ScriptSignature string
@@ -119,6 +119,32 @@ func NewUTXOTransaction(from, to []byte, amount int64, unspentOutputs map[string
 
 	tx = &Transaction{nil, TXout, TXin}
 	tx.SetHash()
+
+	return
+}
+
+func TXOutArraySerializeToString(outs []TXOutput) (value string, err error) {
+	var result bytes.Buffer
+
+	encoder := gob.NewEncoder(&result)
+	err = encoder.Encode(outs)
+
+	value = hex.EncodeToString(result.Bytes())
+
+	return
+}
+
+func TXOutArrayDesiralizeFromString(value string) (outs []TXOutput, err error) {
+	data, err := hex.DecodeString(value)
+	if err != nil {
+		return
+	}
+
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+	err = decoder.Decode(&outs)
+	if err != nil {
+		return
+	}
 
 	return
 }

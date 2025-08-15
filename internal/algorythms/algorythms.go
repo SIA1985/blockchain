@@ -13,6 +13,15 @@ const (
 	AddressChecksumLen = 4
 )
 
+func Int32ToByteArr(v int32) []byte {
+	return []byte{
+		byte(0xff & v),
+		byte(0xff & (v >> 8)),
+		byte(0xff & (v >> 16)),
+		byte(0xff & (v >> 24)),
+	}
+}
+
 func Int64ToByteArr(v int64) []byte {
 	return []byte{
 		byte(0xff & v),
