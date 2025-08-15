@@ -36,6 +36,10 @@ func (t *Transaction) IsCoinbase() bool {
 	return len(t.VIn) == 1 && len(t.VIn[0].TxId) == 0 && t.VIn[0].VOut == -1
 }
 
+func (t Transaction) TxId() string {
+	return hex.EncodeToString(t.Hash)
+}
+
 type TXOutput struct {
 	Value int64
 
@@ -73,6 +77,9 @@ type TXInput struct {
 	PublicKey []byte
 }
 
+func (in TXInput) RefTxId() string {
+	return hex.EncodeToString(in.TxId)
+}
 func NewTXInput(txId []byte, vOut int64) *TXInput {
 	return &TXInput{txId, vOut, []byte{}, []byte{}}
 }

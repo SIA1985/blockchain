@@ -6,6 +6,7 @@ import (
 	httpmap "blockchain/internal/httpMap"
 	"blockchain/internal/transaction"
 	"fmt"
+	"slices"
 )
 
 const (
@@ -167,17 +168,50 @@ func (bc *Blockchain) FindUTXO(address []byte) (UTXO map[string][]transaction.TX
 }
 
 func (bc Blockchain) UpdateUTXO(txs []*transaction.Transaction) (err error) {
-	// for _, tx := range txs {
-	// 	/*outs*/
-	// 	for _, out := range tx.VOut {
+	for _, tx := range txs {
+		/*outs*/
+		var outsString string
+		outsString, err = transaction.TXOutArraySerializeToString(tx.VOut)
+		if err != nil {
+			return
+		}
 
-	// 	}
+		err = httpmap.Store(UTXOFile, tx.TxId(), outsString)
+		if err != nil {
+			return
+		}
 
-	// 	/*ins*/
-	// 	for _, in := range tx.VIn {
+		/*ins*/
+		var value string
+		var outs []transaction.TXOutput
+		for _, in := range tx.VIn {
+			value, err = httpmap.Load(UTXOFile, in.RefTxId())
+			if err != nil {
+				return
+			}
 
-	// 	}
-	// }
+			outs, err = transaction.TXOutArrayDesiralizeFromString(value)
+			if err != nil {
+				return
+			}
+
+			outs = slices.Delete(outs, int(in.VOut), int(in.VOut))
+
+			value, err = transaction.TXOutArraySerializeToString(outs)
+			if err != nil {
+				return
+			}
+
+			if len(outs) == 0 {
+				err = httpmap.Delete(UTXOFile, in.RefTxId())
+			} else {
+				err = httpmap.Store(UTXOFile, in.RefTxId(), value)
+			}
+			if err != nil {
+				return
+			}
+		}
+	}
 
 	return
 }

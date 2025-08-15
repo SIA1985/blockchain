@@ -139,3 +139,26 @@ func Load(file string, key string) (value string, err error) {
 
 	return
 }
+
+func Delete(file string, key string) (err error) {
+	requestStr := Addr + fmt.Sprintf("/storage/%s/%s", file, key)
+
+	client := &http.Client{}
+
+	request, err := http.NewRequest(http.MethodDelete, requestStr, nil)
+	if err != nil {
+		return
+	}
+
+	response, err := client.Do(request)
+	if err != nil {
+		return
+	}
+
+	if response.StatusCode != http.StatusOK {
+		err = fmt.Errorf("delete '%s': %s", requestStr, http.StatusText(response.StatusCode))
+		return
+	}
+
+	return
+}
