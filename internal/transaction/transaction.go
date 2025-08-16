@@ -90,15 +90,19 @@ func (in TXInput) UsesKey(publicKeyHash []byte) bool {
 	return bytes.Equal(lockingHash, publicKeyHash)
 }
 
-func NewCoinbaseTX(to []byte, subsidy int64, commision int64) *Transaction {
+func NewCoinbaseTX(to []byte, subsidy int64, commision int64) (tx *Transaction) {
 	txin := *NewTXInput([]byte{}, -1)
 	txout := *NewTXOutput(subsidy, to)
-	txCommision := *NewTXOutput(commision, to)
+	if commision > 0 {
+		txCommision := *NewTXOutput(commision, to)
+		tx = &Transaction{nil, []TXOutput{txout, txCommision}, []TXInput{txin}}
+	} else {
+		tx = &Transaction{nil, []TXOutput{txout}, []TXInput{txin}}
+	}
 
-	tx := Transaction{nil, []TXOutput{txout, txCommision}, []TXInput{txin}}
 	tx.SetHash()
 
-	return &tx
+	return
 }
 
 func NewUTXOTransaction(from, to []byte, amount int64, unspentOutputs map[string][]int64, accumulated int64) (tx *Transaction) {

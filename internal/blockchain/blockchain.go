@@ -28,7 +28,7 @@ type Blockchain struct {
 	myAddress []byte
 }
 
-func initStorage(address []byte) (err error) {
+func (bc Blockchain) initStorage(address []byte) (err error) {
 	genesis := block.NewGenesisBlock(transaction.NewCoinbaseTX(address, SubsidyBase, 0))
 
 	value, err := genesis.StringSerialize()
@@ -46,10 +46,24 @@ func initStorage(address []byte) (err error) {
 		return
 	}
 
+	for _, tx := range genesis.Data.Transactions {
+		/*outs*/
+		var outsString string
+		outsString, err = transaction.TXOutArraySerializeToString(tx.VOut)
+		if err != nil {
+			return
+		}
+
+		err = httpmap.Store(UTXOFile, tx.TxId(), outsString)
+		if err != nil {
+			return
+		}
+	}
+
 	return
 }
 
-func NewBlockchain(address []byte) (b *Blockchain, err error) {
+func NewBlockchain(address []byte) (bc *Blockchain, err error) {
 	var ok bool
 
 	ok, err = httpmap.CheckFiles([]string{BlocksFile, TipFile, UTXOFile})
@@ -62,8 +76,10 @@ func NewBlockchain(address []byte) (b *Blockchain, err error) {
 		return
 	}
 
+	bc = &Blockchain{}
+
 	if !ok {
-		err = initStorage(address)
+		err = bc.initStorage(address)
 		if err != nil {
 			return
 		}
@@ -79,7 +95,7 @@ func NewBlockchain(address []byte) (b *Blockchain, err error) {
 		return
 	}
 
-	b = &Blockchain{tipBlock, address}
+	bc.tip, bc.myAddress = tipBlock, address
 	return
 }
 
@@ -109,7 +125,14 @@ func (bc *Blockchain) AddBlock(data block.BlockData, comission int64) (err error
 		return
 	}
 
+	err = bc.UpdateUTXO(newBlock.Data.Transactions)
+	if err != nil {
+		err = fmt.Errorf("can't update utxo: %v", err)
+		return
+	}
+
 	bc.tip = newBlock
+
 	return
 }
 
@@ -134,6 +157,7 @@ func (bc *Blockchain) Iterator() BlockchainIterator {
 }
 
 func (bc *Blockchain) FindUTXO(address []byte) (UTXO map[string][]transaction.TXOutput, err error) {
+	UTXO = make(map[string][]transaction.TXOutput)
 	publicKeyHash := algorythms.PublicKeyHash(address)
 
 	/*todo: оптимизировать запросом всего*/
@@ -167,6 +191,7 @@ func (bc *Blockchain) FindUTXO(address []byte) (UTXO map[string][]transaction.TX
 	return
 }
 
+/*todo: откат при конфликте блоков*/
 func (bc Blockchain) UpdateUTXO(txs []*transaction.Transaction) (err error) {
 	for _, tx := range txs {
 		/*outs*/
@@ -195,16 +220,16 @@ func (bc Blockchain) UpdateUTXO(txs []*transaction.Transaction) (err error) {
 				return
 			}
 
-			outs = slices.Delete(outs, int(in.VOut), int(in.VOut))
-
-			value, err = transaction.TXOutArraySerializeToString(outs)
-			if err != nil {
-				return
-			}
+			outs = slices.Delete(outs, int(in.VOut), int(in.VOut)+1)
 
 			if len(outs) == 0 {
 				err = httpmap.Delete(UTXOFile, in.RefTxId())
 			} else {
+				value, err = transaction.TXOutArraySerializeToString(outs)
+				if err != nil {
+					return
+				}
+
 				err = httpmap.Store(UTXOFile, in.RefTxId(), value)
 			}
 			if err != nil {

@@ -79,18 +79,18 @@ func (c *CLI) AddBlock(from, to string, amount int64) {
 
 	srcAddress, err := hex.DecodeString(from)
 	if err != nil {
-		fmt.Printf("Can't decode 'from' address: %x\n", err)
+		fmt.Printf("Can't decode 'from' address: %v\n", err)
 		return
 	}
 	destAddress, err := hex.DecodeString(to)
 	if err != nil {
-		fmt.Printf("Can't decode 'to' address: %x\n", err)
+		fmt.Printf("Can't decode 'to' address: %v\n", err)
 		return
 	}
 
 	unspentOuts, accumulated, err := bc.FindOutputsToSpend(srcAddress, amount)
 	if err != nil {
-		fmt.Printf("Can't find utxo: %x\n", err)
+		fmt.Printf("Can't find utxo: %v\n", err)
 		return
 	}
 
@@ -100,13 +100,7 @@ func (c *CLI) AddBlock(from, to string, amount int64) {
 
 	err = bc.AddBlock(block.BlockData{Transactions: TXs}, accumulated-amount)
 	if err != nil {
-		fmt.Printf("Can't send: %x\n", err)
-		return
-	}
-
-	err = bc.UpdateUTXO(TXs)
-	if err != nil {
-		fmt.Printf("Can't update utxo: %x\n", err)
+		fmt.Printf("Can't send: %v\n", err)
 		return
 	}
 
@@ -147,7 +141,7 @@ func (c *CLI) GetBalance(address string) {
 
 	srcAddress, err := hex.DecodeString(address)
 	if err != nil {
-		fmt.Printf("Can't decode address: %x\n", err)
+		fmt.Printf("Can't decode address: %v\n", err)
 		return
 	}
 
