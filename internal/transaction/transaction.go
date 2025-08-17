@@ -124,9 +124,6 @@ func NewUTXOTransaction(from, to []byte, amount int64, unspentOutputs map[string
 
 	/*outputs*/
 	TXout = append(TXout, *NewTXOutput(amount, to))
-	if accumulated > amount {
-		TXout = append(TXout, *NewTXOutput(accumulated-amount, from))
-	}
 
 	tx = &Transaction{nil, TXout, TXin}
 	tx.SetHash()
