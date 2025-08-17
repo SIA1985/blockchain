@@ -108,7 +108,7 @@ func (bc *Blockchain) AddBlock(data block.BlockData, comission int64) (err error
 	prevBlock := bc.tip
 	newBlock := block.NewBlock(data, prevBlock.Header.Hash, prevBlock.Header.Height)
 
-	data.Transactions = append(data.Transactions, transaction.NewCoinbaseTX(bc.myAddress, bc.getSubsidy(), comission))
+	newBlock.Data.Transactions = append(data.Transactions, transaction.NewCoinbaseTX(bc.myAddress, bc.getSubsidy(), comission))
 
 	value, err := newBlock.StringSerialize()
 	if err != nil {
@@ -206,6 +206,10 @@ func (bc Blockchain) UpdateUTXO(txs []*transaction.Transaction) (err error) {
 			return
 		}
 
+		if tx.IsCoinbase() {
+			continue
+		}
+
 		/*ins*/
 		var value string
 		var outs []transaction.TXOutput
@@ -242,8 +246,6 @@ func (bc Blockchain) UpdateUTXO(txs []*transaction.Transaction) (err error) {
 }
 
 func (bc *Blockchain) FindOutputsToSpend(address []byte, amount int64) (unspentOutputs map[string][]int64, accumulated int64, err error) {
-	publicKeyHash := algorythms.PublicKeyHash(address)
-
 	unspentOutputs = make(map[string][]int64)
 	accumulated = 0
 
@@ -255,13 +257,11 @@ func (bc *Blockchain) FindOutputsToSpend(address []byte, amount int64) (unspentO
 Work:
 	for txId, outs := range UTXO {
 		for outId, out := range outs {
-			if out.IsLockedWithKey(publicKeyHash) && accumulated < amount {
+			if accumulated < amount {
 				accumulated += out.Value
 				unspentOutputs[txId] = append(unspentOutputs[txId], int64(outId))
-
-				if accumulated >= amount {
-					break Work
-				}
+			} else {
+				break Work
 			}
 		}
 	}
