@@ -36,7 +36,7 @@ func (bc Blockchain) initStorage(address []byte) (err error) {
 		return
 	}
 
-	err = httpmap.Store(BlocksFile, genesis.StringHash(), value)
+	err = bc.StoreBlock(genesis)
 	if err != nil {
 		return
 	}
@@ -44,20 +44,6 @@ func (bc Blockchain) initStorage(address []byte) (err error) {
 	err = httpmap.Store(TipFile, tip, value)
 	if err != nil {
 		return
-	}
-
-	for _, tx := range genesis.Data.Transactions {
-		/*outs*/
-		var outsString string
-		outsString, err = transaction.TXOutArraySerializeToString(tx.VOut)
-		if err != nil {
-			return
-		}
-
-		err = httpmap.Store(UTXOFile, tx.TxId(), outsString)
-		if err != nil {
-			return
-		}
 	}
 
 	return
@@ -104,12 +90,7 @@ func (bc Blockchain) getSubsidy() int64 {
 	return SubsidyBase >> (2 * int64((bc.tip.Header.Height / 3)))
 }
 
-func (bc *Blockchain) AddBlock(data block.BlockData, comission int64) (err error) {
-	prevBlock := bc.tip
-	newBlock := block.NewBlock(data, prevBlock.Header.Hash, prevBlock.Header.Height)
-
-	newBlock.Data.Transactions = append(data.Transactions, transaction.NewCoinbaseTX(bc.myAddress, bc.getSubsidy(), comission))
-
+func (bc Blockchain) StoreBlock(newBlock *block.Block) (err error) {
 	value, err := newBlock.StringSerialize()
 	if err != nil {
 		return
@@ -120,14 +101,33 @@ func (bc *Blockchain) AddBlock(data block.BlockData, comission int64) (err error
 		return
 	}
 
-	err = httpmap.Store(TipFile, tip, value)
+	err = bc.UpdateUTXO(newBlock.Data.Transactions)
+	if err != nil {
+		err = fmt.Errorf("can't update utxo: %v", err)
+		return
+	}
+
+	return
+}
+
+func (bc *Blockchain) AddBlock(data block.BlockData, comission int64) (err error) {
+	prevBlock := bc.tip
+	newBlock := block.NewBlock(data, prevBlock.Header.Hash, prevBlock.Header.Height)
+
+	newBlock.Data.Transactions = append(data.Transactions, transaction.NewCoinbaseTX(bc.myAddress, bc.getSubsidy(), comission))
+
+	err = bc.StoreBlock(newBlock)
 	if err != nil {
 		return
 	}
 
-	err = bc.UpdateUTXO(newBlock.Data.Transactions)
+	value, err := newBlock.StringSerialize()
 	if err != nil {
-		err = fmt.Errorf("can't update utxo: %v", err)
+		return
+	}
+
+	err = httpmap.Store(TipFile, tip, value)
+	if err != nil {
 		return
 	}
 
