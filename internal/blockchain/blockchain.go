@@ -191,7 +191,6 @@ func (bc *Blockchain) FindUTXO(address []byte) (UTXO map[string][]transaction.TX
 	return
 }
 
-/*todo: протестить получение комиссии*/
 /*todo: откат при конфликте блоков*/
 func (bc Blockchain) UpdateUTXO(txs []*transaction.Transaction) (err error) {
 	for _, tx := range txs {

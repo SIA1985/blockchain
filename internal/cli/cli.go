@@ -136,6 +136,7 @@ func (c *CLI) ValidateBlockchain() {
 	}
 }
 
+/*todo: валидация адреса*/
 func (c *CLI) GetBalance(address string) {
 	bc := getBlockchain()
 
