@@ -70,9 +70,7 @@ type TXInput struct {
 	TxId []byte /*Id транзакции, на которую ссылаемся*/
 	VOut int64  /*Индекс выхода транзакции с Id=TxId*/
 
-	//todo: свой скриптовый язык
-	// ScriptSignature string
-
+	//todo: данные свидетеля
 	Signature []byte
 	PublicKey []byte
 }
